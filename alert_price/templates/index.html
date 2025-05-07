@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Alert Prices</title>
+<link rel="stylesheet" href="/static/styles.css"> <!-- Подключение стилей -->
+</head>
+<body>
+    <header class="page-header">  <!-- Отдельный блок перед wrapper -->
+        <h1>Сигнализатор достижения цены ценового порога</h1>
+    </header>
+
+    <div id="wrapper">
+        <div id="parameters">
+            <h3>Добавление акций</h3>
+            <form id="entering-data-form" action="api/stock-alerts" method="post">
+                <label for="ticker">Тикер:</label>
+                <input type="text" id="ticker" name="ticker"
+                pattern="[A-Z]+" 
+                title="Только заглавные буквы (без цифр и символов)"
+                required><br><br>
+
+                <label for="buy_price">Цена покупки:</label>
+                <input type="text" inputmode="decimal"
+                id="buy_price" name="buy_price"
+                required><br><br>
+
+                <label for="sell_price">Цена продажи:</label>
+                <input type="text" inputmode="decimal"
+                id="sell_price" name="sell_price"
+                required><br><br>
+
+                <button type="submit">Внести в список</button>
+            </form>
+
+            <form id="delete-stock-form">
+                <h3>Удаление акции</h3>
+                
+                <label for="ticker-to-delete">Тикер акции:</label>
+                <input type="text" 
+                       id="ticker-to-delete" 
+                       name="ticker" 
+                       required
+                       pattern="[A-Z]{1,5}"
+                       title="Только заглавные буквы (1-5 символов)">
+                
+                <button type="submit">Удалить акцию</button>
+            </form>
+        </div>
+
+        <div id="report-block">
+            <h3>Список отслеживания</h3>
+            <div id="stock-table-container">
+                <table id="stock-table">
+                    <thead>
+                        <tr>
+                            <th>Тикер</th>
+                            <th>Цена покупки</th>
+                            <th>Цена продажи</th>
+                            <th>Текущая цена</th>
+                            <th>Статус</th>
+                        </tr>
+                    </thead>
+                    <tbody id="stock-table-body">
+                        <!-- Данные будут вставлены через JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Подключение JavaScript -->
+        <script src="/static/scripts.js"></script>
+
+    </div>
+</body>
+
+</html>
