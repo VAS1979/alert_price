@@ -16,16 +16,8 @@ class PriceRequest:
 
     # Адрес запроса к MOEX по всем акциям
     SHARE_URL = ("http://iss.moex.com/iss/engines/stock/markets/shares/boards/"
-                 "TQBR/securities.json?iss.meta=off")
-
-    # Шаблон для проверки изменений типов и наименований столбцов таблицы акций
-    SHARES_COLUMN_TEMPLATE = [
-        'SECID', 'BOARDID', 'SHORTNAME', 'PREVPRICE', 'LOTSIZE', 'FACEVALUE',
-        'STATUS', 'BOARDNAME', 'DECIMALS', 'SECNAME', 'REMARKS', 'MARKETCODE',
-        'INSTRID', 'SECTORID', 'MINSTEP', 'PREVWAPRICE', 'FACEUNIT',
-        'PREVDATE', 'ISSUESIZE', 'ISIN', 'LATNAME', 'REGNUMBER',
-        'PREVLEGALCLOSEPRICE', 'CURRENCYID', 'SECTYPE', 'LISTLEVEL',
-        'SETTLEDATE']
+                 "TQBR/securities.json?iss.meta=off&iss.only=marketdata"
+                 "&marketdata.columns=SECID,LAST")
 
     def __init__(self):
         self.session = None
@@ -70,7 +62,7 @@ class PriceRequest:
                          sber_ticker)
             raise ValueError("Неверный тикер в ответе MOEX.")
 
-        if not isinstance(sber_price, (float)) or sber_price is None:
+        if not isinstance(sber_price, (float, int)) or sber_price is None:
             logger.error("Некорректная цена: %s", sber_price)
             raise ValueError("MOEX вернул некорректную цену.")
 
@@ -91,27 +83,57 @@ class PriceRequest:
             logger.error("Ошибка подключения к MOEX: %s", e)
             raise ValueError("Не удалось получить данные с MOEX.") from e
 
-        # Проверка на отсутствие изменений в списке параметров акций
-        securities_columns = content['securities']['columns']
-        if securities_columns != self.SHARES_COLUMN_TEMPLATE:
-            logger.error("Обнаружены изменения в списке параметров акций.")
-            raise ValueError("Изменения в списке параметров акций.")
-
         logger.info("Котировки всех акций MOEX успешно получены.")
         self.content = content
 
-    async def generates_quotes_dictionary(self):
+    async def generates_quotes_dictionary(self) -> dict[str, float]:
         """
-        Формирует словарь котировок.
+        Формирует словарь котировок из предварительно валидированных данных.
 
         Returns:
-            quotes_dict: Словарь(тикер: цена).
+            Словарь {тикер: цена} с валидными котировками
+
+        Raises:
+            RuntimeError: Если не найдено ни одной валидной котировки
         """
-
-        share_list = self.content['securities']['data']
         quotes_dict = {}
+        error_count = 0
+        market_data = self.content["marketdata"]["data"]
 
-        for share in share_list:
-            quotes_dict.update({share[0]: share[3]})
+        for share in market_data:
+            # Проверка структуры записи
+            if len(share) < 2:
+                error_count += 1
+                continue
 
+            ticker, price = share[0], share[1]
+
+            # Проверка тикера
+            if not isinstance(ticker, str) or not ticker.strip():
+                error_count += 1
+                continue
+
+            # Обработка цены
+            try:
+                float_price = float(price)
+            except (TypeError, ValueError):
+                error_count += 1
+                continue
+
+            # Проверка валидности цены
+            if float_price <= 0:
+                error_count += 1
+                continue
+
+            quotes_dict[ticker] = float_price
+
+        # Логирование результатов
+        if error_count:
+            logger.warning("Пропущено записей с ошибками: %s", error_count)
+
+        if not quotes_dict:
+            logger.error("Не обнаружено ни одной валидной котировки")
+            raise RuntimeError("Все полученные котировки содержат ошибки")
+
+        logger.info("Успешно обработано котировок: %s", len(quotes_dict))
         return quotes_dict
