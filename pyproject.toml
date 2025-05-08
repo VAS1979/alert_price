@@ -28,3 +28,6 @@ filterwarnings = ["ignore::pytest.PytestConfigWarning"]
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.poetry.scripts]
+app = "alert_price.__main__:run_server"

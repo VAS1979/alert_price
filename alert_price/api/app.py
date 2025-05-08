@@ -16,7 +16,9 @@ from alert_price.services.price_cache import PriceCache
 from alert_price.services.redis_client import init_redis
 from alert_price.utils.logger import setup_logging
 from alert_price.services.event_loop_handler import (
-    handles_event_loop, stop_event)
+    handles_event_loop,
+    stop_event,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -80,7 +82,3 @@ async def general_exception_handler(request: Request, exc: Exception):
         content={"detail": "Произошла непредвиденная ошибка на сервере"},
     )
 
-if __name__ == "__main__":
-    setup_logging()
-    logger.info("Запуск сервера Uvicorn")
-    uvicorn.run(app, host="127.0.0.1", port=8088)
