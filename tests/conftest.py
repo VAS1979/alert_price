@@ -53,7 +53,11 @@ def securities_response_data():
         }
     }
 
-
+# TODO:
+# Установи в pyproject.toml переменеые настройки pytest 
+# asyncio_mode и asyncio_default_fixture_loop_scope
+# и асинхронные тесты и фикстуры не нужно будет маркировать
+# подобными марками
 @pytest_asyncio.fixture(scope="function")
 async def price_request():
     """Асинхронная фикстура, предоставляющая экземпляр PriceRequest.
@@ -65,6 +69,21 @@ async def price_request():
         Автоматически управляет созданием и закрытием сессии
     """
     pr = PriceRequest()
+    # TODO:
+    # Зачем вызываешь эти методы?
+    # он для того и контестменеджер, чтоб делать
+    # это одной строкой.
+    # async with PriceRequest() as pr:
+    #     yield pr
+    
+    #TODO:
+    # оборачивать в try-except тут не надо
+    # Если в процессе теста вылетит исключение,которого
+    # ты не жлешь то эту ошибку ты устанешь искать
+    # тк try закроется вызовом aexit без передачи 
+    # выхлопа ошибки. todoшка выше гарантирует,
+    # что любое исключение внутри контеста выведет
+    # полный трейс ексепшена
     await pr.__aenter__()
     try:
         yield pr

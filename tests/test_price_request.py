@@ -4,6 +4,8 @@ import pytest
 
 from alert_price.services.prices_request import PriceRequest
 
+# TODO:
+# см. комментарий из conftest.py
 pytestmark = pytest.mark.asyncio
 
 
@@ -117,7 +119,7 @@ class TestPriceRequest:
 
         with pytest.raises(ValueError, match="Изменения в списке параметров"):
             await price_request.request_securities()
-
+    
     @pytest.mark.parametrize("status_code", [400, 500, 404])
     async def test_request_failures(
         self,
