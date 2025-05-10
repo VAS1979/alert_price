@@ -3,7 +3,7 @@ name: Deploy AlertPrice to DEV
 on:
   push:
     branches:
-      - main
+      - master
 
 jobs:
   build-and-deploy:
@@ -49,8 +49,9 @@ jobs:
 
       - name: Deploy to server (clean before up)
         run: |
-          rsync -avz -e "ssh -o StrictHostKeyChecking=no" --delete \
-            .env docker-compose.yml alert_price.tar \
+          rsync -avz --delete \
+            -e "ssh -o StrictHostKeyChecking=no" \
+            ./ \
             ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_IP }}:/opt/alert_price/
           ssh -o StrictHostKeyChecking=no ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_IP }} << 'EOF'
             set -e
@@ -62,16 +63,11 @@ jobs:
             sudo docker volume prune -f || true
             echo "=== ОЧИСТКА ЗАВЕРШЕНА ==="
 
-            echo "=== Загрузка нового образа ==="
-            sudo docker load -i alert_price.tar
-
-            echo "=== Поднимаем сервис ==="
+            echo "=== Поднимаем сервисы ==="
             sudo docker-compose up -d --build
-
-            sudo rm -f alert_price.tar
 
             echo "=== Docker Compose Status ==="
             sudo docker-compose ps
-            echo "=== Files in /opt/alert_price ==="
+            echo "=== Файлы в /opt/alert_price ==="
             ls -lah /opt/alert_price
           EOF
