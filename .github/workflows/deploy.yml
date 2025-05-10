@@ -3,7 +3,7 @@ name: Deploy AlertPrice to DEV
 on:
   push:
     branches:
-      - main
+      - master
 
 jobs:
   build-and-deploy:
@@ -13,10 +13,10 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Install Docker, SSH, and rsync
+      - name: Install SSH and rsync
         run: |
           sudo apt-get update
-          sudo apt-get install -y docker.io docker-compose openssh-client rsync
+          sudo apt-get install -y openssh-client rsync
 
       - name: Setup SSH Keys
         run: |
