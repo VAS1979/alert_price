@@ -1,15 +1,15 @@
 """Содержит функцию инициализации Redis."""
 
 import logging
+import os
 from redis.asyncio import Redis
 
 logger = logging.getLogger(__name__)
 
-
 async def init_redis(
-    host: str = "localhost",
-    port: int = 6379,
-    db: int = 0,
+    host: str = None,
+    port: int = None,
+    db: int = None,
     password: str = None
 ) -> Redis:
     """
@@ -27,6 +27,11 @@ async def init_redis(
     Raises:
         RuntimeError: Если подключение не удалось.
     """
+    host = host or os.environ.get("REDIS_HOST", "localhost")
+    port = int(port or os.environ.get("REDIS_PORT", 6379))
+    db = int(db or os.environ.get("REDIS_DB", 0))
+    password = password or os.environ.get("REDIS_PASSWORD", None)
+
     try:
         redis = Redis(
             host=host,
@@ -37,7 +42,7 @@ async def init_redis(
         )
         # Проверяем подключение
         await redis.ping()
-        logger.info("Успешное подключение к Redis")
+        logger.info(f"Успешное подключение к Redis: {host}:{port} db={db}")
         return redis
     except Exception as e:
         logger.error("Ошибка подключения к Redis: %s", e)
