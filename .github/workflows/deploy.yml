@@ -1,0 +1,67 @@
+name: Deploy AlertPrice to DEV
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Docker, SSH, and rsync
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y docker.io docker-compose openssh-client rsync
+
+      - name: Setup SSH Keys
+        run: |
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          echo "${{ secrets.PRIVATE_CLOUD }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          echo "${{ secrets.PUBLIC_CLOUD }}" > ~/.ssh/id_rsa.pub
+          chmod 644 ~/.ssh/id_rsa.pub
+          ssh-keyscan -H ${{ secrets.SERVER_IP }} >> ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+          eval "$(ssh-agent -s)"
+          ssh-add ~/.ssh/id_rsa
+
+      - name: Build Docker image
+        run: |
+          docker build -t alert_price:latest .
+
+      - name: Save Docker image to file
+        run: |
+          docker save alert_price:latest -o alert_price.tar
+
+      - name: Create .env file from secret
+        run: |
+          echo "${{ secrets.DOT_ENV }}" > .env
+
+      - name: Test SSH Connection
+        run: |
+          ssh -vvv -o BatchMode=yes -o StrictHostKeyChecking=no ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_IP }} echo "SSH OK"
+
+      - name: Deploy to server
+        run: |
+          rsync -avz -e "ssh -o StrictHostKeyChecking=no" --delete \
+            .env docker-compose.yml alert_price.tar \
+            ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_IP }}:/opt/alert_price/
+          ssh -o StrictHostKeyChecking=no ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_IP }} << 'EOF'
+            set -e
+            cd /opt/alert_price
+            sudo docker load -i alert_price.tar
+            sudo docker-compose down || true
+            sudo docker-compose up -d
+            sudo rm -f alert_price.tar
+            sudo docker image prune -f
+            echo "=== Docker Compose Status ==="
+            sudo docker-compose ps
+            echo "=== Files in /opt/alert_price ==="
+            ls -lah /opt/alert_price
+          EOF
