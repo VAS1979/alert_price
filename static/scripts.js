@@ -48,7 +48,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 document.querySelectorAll('.price-cell').forEach(cell => {
                     const ticker = cell.dataset.ticker;
                     const price = currentPrices[ticker];
-                    cell.textContent = price ? price.toFixed(2) : 'N/A';
+                    cell.textContent = price !== undefined ? price.toString() : 'N/A';
                     updateRowStyle(cell.closest('tr'), ticker);
                 });
             } catch (error) {
@@ -105,15 +105,22 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    // Функция для форматирования чисел
+    const formatNumber = (num) => {
+        if (num === undefined || num === null) return 'N/A';
+        const str = num.toString();
+        return str.includes('.') ? str.replace(/\.?0+$/, '') : str;
+    };
+
     // Рендеринг таблицы
     function renderStockTable(stocks) {
         tableBody.innerHTML = stocks.map(stock => `
             <tr>
                 <td>${stock.ticker}</td>
-                <td>${parseFloat(stock.buy_price).toFixed(2)}</td>
-                <td>${parseFloat(stock.sell_price).toFixed(2)}</td>
+                <td>${formatNumber(stock.buy_price)}</td>
+                <td>${formatNumber(stock.sell_price)}</td>
                 <td class="price-cell" data-ticker="${stock.ticker}">
-                    ${currentPrices[stock.ticker]?.toFixed(2) || 'N/A'}
+                    ${formatNumber(currentPrices[stock.ticker])}
                 </td>
                 <td class="status-cell">
                     ${getStatus(stock, currentPrices)}
@@ -141,6 +148,13 @@ document.addEventListener('DOMContentLoaded', () => {
         return '';
     }
 
+    // Функция для точного сравнения цен
+    function comparePrices(price1, price2) {
+        const num1 = typeof price1 === 'string' ? parseFloat(price1) : price1;
+        const num2 = typeof price2 === 'string' ? parseFloat(price2) : price2;
+        return { num1, num2 };
+    }
+
     // Обновление стилей строки
     function updateRowStyle(row, ticker) {
         const priceCell = row.querySelector('.price-cell');
@@ -153,9 +167,9 @@ document.addEventListener('DOMContentLoaded', () => {
         
         if (!price) return;
         
-        const buyPrice = parseFloat(row.children[1].textContent);
-        const sellPrice = parseFloat(row.children[2].textContent);
-        
+        const { num1: buyPrice, num2: currentPrice } = comparePrices(row.children[1].textContent, price);
+        const { num1: sellPrice } = comparePrices(row.children[2].textContent, price);
+
         if (price <= buyPrice) {
             priceCell.classList.add('price-low');
             statusCell.classList.add('status-buy');
