@@ -10,6 +10,11 @@ services:
     ports:
       - "8088:8088"
     environment:
-      REDIS_HOST: "localhost"
+      REDIS_HOST: "alert_price_redis"  # имя контейнера Redis
       REDIS_PORT: 6379
-    depends_on: []
+    networks:
+      - skynet
+
+networks:
+  skynet:
+    external: true
