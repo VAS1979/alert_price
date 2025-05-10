@@ -31,14 +31,6 @@ jobs:
           eval "$(ssh-agent -s)"
           ssh-add ~/.ssh/id_rsa
 
-      - name: Build Docker image
-        run: |
-          docker build -t alert_price:latest .
-
-      - name: Save Docker image to file
-        run: |
-          docker save alert_price:latest -o alert_price.tar
-
       - name: Create .env file from secret
         run: |
           echo "${{ secrets.DOT_ENV }}" > .env
@@ -47,9 +39,15 @@ jobs:
         run: |
           ssh -vvv -o BatchMode=yes -o StrictHostKeyChecking=no ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_IP }} echo "SSH OK"
 
-      - name: Deploy to server (clean before up)
+      - name: Deploy to server (app-only, no data loss)
         run: |
           rsync -avz --delete \
+            --exclude='redis_data' \
+            --exclude='db_data' \
+            --exclude='.git' \
+            --exclude='tests' \
+            --exclude='*.log' \
+            --exclude='__pycache__' \
             -e "ssh -o StrictHostKeyChecking=no" \
             ./ \
             ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_IP }}:/opt/alert_price/
@@ -57,13 +55,8 @@ jobs:
             set -e
             cd /opt/alert_price
 
-            echo "=== СТАРТ: Полная очистка docker-контейнеров, образов и volume'ов ==="
-            sudo docker-compose down --rmi all --volumes --remove-orphans || true
-            sudo docker image prune -af || true
-            sudo docker volume prune -f || true
-            echo "=== ОЧИСТКА ЗАВЕРШЕНА ==="
-
-            echo "=== Поднимаем сервисы ==="
+            echo "=== Перезапускаем сервисы приложения (без удаления volume) ==="
+            sudo docker-compose down --remove-orphans || true
             sudo docker-compose up -d --build
 
             echo "=== Docker Compose Status ==="
