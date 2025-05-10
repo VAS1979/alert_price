@@ -177,6 +177,7 @@ button[type="submit"]:hover {
     padding: 1rem;               /* Внутренние отступы */
     text-align: left;            /* Выравнивание текста по левому краю */
     border-bottom: 1px solid var(--border-color); /* Граница снизу */
+    white-space: nowrap;         /* Запрет переноса текста */
 }
 
 /* Стили для заголовков таблицы */
