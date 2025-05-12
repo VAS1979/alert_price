@@ -1,0 +1,66 @@
+name: Deploy AlertPrice to DEV
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install SSH and rsync
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y openssh-client rsync
+
+      - name: Setup SSH Keys
+        run: |
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          echo "${{ secrets.PRIVATE_CLOUD }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          echo "${{ secrets.PUBLIC_CLOUD }}" > ~/.ssh/id_rsa.pub
+          chmod 644 ~/.ssh/id_rsa.pub
+          ssh-keyscan -H ${{ secrets.SERVER_IP }} >> ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+          eval "$(ssh-agent -s)"
+          ssh-add ~/.ssh/id_rsa
+
+      - name: Create .env file from secret
+        run: |
+          echo "${{ secrets.DOT_ENV }}" > .env
+
+      - name: Test SSH Connection
+        run: |
+          ssh -vvv -o BatchMode=yes -o StrictHostKeyChecking=no ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_IP }} echo "SSH OK"
+
+      - name: Deploy to server (app-only, no data loss)
+        run: |
+          rsync -avz --delete \
+            --exclude='redis_data' \
+            --exclude='db_data' \
+            --exclude='.git' \
+            --exclude='tests' \
+            --exclude='*.log' \
+            --exclude='__pycache__' \
+            -e "ssh -o StrictHostKeyChecking=no" \
+            ./ \
+            ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_IP }}:/opt/alert_price/
+          ssh -o StrictHostKeyChecking=no ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_IP }} << 'EOF'
+            set -e
+            cd /opt/alert_price
+
+            echo "=== Перезапускаем сервисы приложения (без удаления volume) ==="
+            sudo docker-compose down --remove-orphans || true
+            sudo docker-compose up -d --build
+
+            echo "=== Docker Compose Status ==="
+            sudo docker-compose ps
+            echo "=== Файлы в /opt/alert_price ==="
+            ls -lah /opt/alert_price
+          EOF

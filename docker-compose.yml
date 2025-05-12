@@ -1,0 +1,22 @@
+services:
+  alert_price:
+    build: .
+    image: alert_price:latest
+    restart: always
+    env_file:
+      - .env
+    ports:
+      - "8088:8088"
+    environment:
+      REDIS_HOST: "alert_price_redis"  # имя контейнера Redis
+      REDIS_PORT: 6379
+    networks:
+      - skynet
+    volumes:
+      - ./db_data:/app/database # бд скуль лайт
+
+networks:
+  skynet:
+    external: true
+
+
