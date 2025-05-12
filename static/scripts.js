@@ -54,7 +54,7 @@ document.addEventListener('DOMContentLoaded', () => {
             } catch (error) {
                 console.error('Ошибка обновления цен:', error);
             }
-        }, 30000);
+        }, 9000);
     }
 
     // Обработка добавления акции

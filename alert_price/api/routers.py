@@ -62,7 +62,6 @@ async def create_stock_alert(
         buy_price=buy_price,
         sell_price=sell_price
     )
-    print(parameters)
 
     async with DatabaseGateway() as gateway:
         results = await gateway.save_share(parameters)
