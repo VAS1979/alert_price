@@ -6,6 +6,7 @@ from redis.asyncio import Redis
 
 logger = logging.getLogger(__name__)
 
+
 async def init_redis(
     host: str = None,
     port: int = None,
@@ -42,7 +43,8 @@ async def init_redis(
         )
         # Проверяем подключение
         await redis.ping()
-        logger.info(f"Успешное подключение к Redis: {host}:{port} db={db}")
+        logger.info("Успешное подключение к Redis: %s:%s db=%s",
+                    host, port, db)
         return redis
     except Exception as e:
         logger.error("Ошибка подключения к Redis: %s", e)
