@@ -16,20 +16,36 @@
             <h3>Добавление акций</h3>
             <form id="entering-data-form" action="api/stock-alerts" method="post">
                 <label for="ticker">Тикер:</label>
-                <input type="text" id="ticker" name="ticker"
-                pattern="[A-Z]+" 
-                title="Только заглавные буквы (без цифр и символов)"
-                required><br><br>
+                <input
+                    type="text" id="ticker" name="ticker"
+                    pattern="[A-Z]{1,5}"
+                    title="Только заглавные буквы (1-5 символов)"
+                    required
+                ><br><br>
 
                 <label for="buy_price">Цена покупки:</label>
-                <input type="text" inputmode="decimal"
-                id="buy_price" name="buy_price"
-                required><br><br>
+                <input
+                    type="text" 
+                    inputmode="decimal"
+                    id="buy_price" 
+                    name="buy_price"
+                    pattern="^(?!\.)(?!.*\.$)\d+\.?\d*$"
+                    title="Только цифры и одна точка внутри числа (макс. 7 символов, пример: 123.45)"
+                    maxlength="7"
+                    required
+                ><br><br>
 
                 <label for="sell_price">Цена продажи:</label>
-                <input type="text" inputmode="decimal"
-                id="sell_price" name="sell_price"
-                required><br><br>
+                <input
+                    type="text"
+                    inputmode="decimal"
+                    id="sell_price"
+                    name="sell_price"
+                    pattern="^(?!\.)(?!.*\.$)\d+\.?\d*$"
+                    title="Только цифры и одна точка внутри числа (макс. 7 символов, пример: 123.45)"
+                    maxlength="7"
+                    required
+                ><br><br>
 
                 <button type="submit">Внести в список</button>
             </form>
