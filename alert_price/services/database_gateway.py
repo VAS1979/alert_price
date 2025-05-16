@@ -58,6 +58,34 @@ class DatabaseGateway:
                     f"DELETE FROM sqlite_sequence WHERE name='{table_name}'"
             )
 
+    async def create_tracking_parameters_table(self) -> None:
+        """Создает пустую таблицу tracking_parameters в базе данных.
+
+        Raises:
+            sqlite3.Error: При ошибках работы с БД.
+        """
+        table_name = "tracking_parameters"
+
+        try:
+            async with self.conn.cursor() as cursor:
+                await cursor.execute(f"""
+                CREATE TABLE IF NOT EXISTS {table_name} (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    ticker TEXT NOT NULL,
+                    buy_price TEXT NOT NULL,
+                    sell_price TEXT NOT NULL,
+                    UNIQUE(ticker) ON CONFLICT REPLACE
+                )
+                """)
+                await self.conn.commit()
+                logger.info("Таблица %s создана (или уже существовала)",
+                            table_name)
+
+        except aiosqlite.Error as e:
+            await self.conn.rollback()
+            logger.error("Ошибка при создании таблицы %s: %s", table_name, e)
+            raise
+
     async def save_share(self, parameters: TrackingParameters) -> Path:
         """Сохраняет выбранный тикер с ценами в базу данных.
 

@@ -1,14 +1,14 @@
 """
-Содержит класс кеширования биржевых цен в Redis.
+Модуль для кеширования биржевых цен с постоянным хранением данных.
 
-Обеспечивает:
-- Сохранение текущих цен акций
-- Автоматическое обновление по расписанию
-- Валидацию данных перед кешированием
+Основные особенности:
+- Сохраняет старые значения ключей, если они не были обновлены
+- Не удаляет данные автоматически по таймауту
+- Гарантирует доступность последних полученных цен
 """
 
 from typing import Dict, Optional
-from datetime import datetime, timedelta
+from datetime import datetime
 import logging
 from redis.asyncio import Redis
 from fastapi import HTTPException
@@ -17,56 +17,65 @@ logger = logging.getLogger(__name__)
 
 
 class PriceCache:
-    """Кеш биржевых цен с MOEX."""
+    """Кеш биржевых цен с персистентным хранением данных.
+
+    Особенности работы:
+    - При обновлении изменяются только переданные значения
+    - Непереданные ключи сохраняют свои значения
+    - Данные не имеют срока годности (хранятся до явного удаления)
+    """
 
     def __init__(self, redis_client: Redis):
-        """
+        """Инициализация кеша.
+
         Args:
-            redis_client: Асинхронный клиент Redis.
+            redis_client: Асинхронный клиент Redis для хранения данных
         """
         self.redis = redis_client
         self.cache_key = "moex:latest_prices"  # Ключ для хранения цен
-        self.cache_ttl = 30  # Время актуальности цен в секундах
 
     async def save_prices(self, prices: Dict[str, float]) -> bool:
         """
-        Сохраняет цены акций в кеш.
+        Безопасное сохранение цен с использованием Redis Pipeline.
+
+        Сохраняет только переданные значения, остальные данные без изменений.
+        Использует атомарную операцию через контекстный менеджер.
 
         Args:
-            prices: Словарь {тикер: цена}
+            prices: Словарь {тикер: цена} для обновления
 
         Returns:
-            bool: Успешно ли сохранено
-
-        Raises:
-            ValueError: Если передан пустой словарь цен
+            bool: True если сохранение успешно, False при ошибке
         """
+        if not isinstance(prices, dict):
+            logger.error("Ожидается словарь цен")
+            return False
+
         if not prices:
-            raise ValueError("Нельзя сохранить пустые цены")
+            logger.debug("Пустой словарь цен - обновление не требуется")
+            return True
 
         try:
-            # Атомарная запись + установка TTL
             async with self.redis.pipeline() as pipe:
+                # Атомарная операция с частичным обновлением:
                 await pipe.hset(self.cache_key, mapping=prices)
-                await pipe.expire(self.cache_key, self.cache_ttl)
-                await pipe.execute()
+                await pipe.execute()  # Фиксация изменений
 
-            logger.debug("Сохранены цены для %s акций", len(prices))
+            logger.debug("Обновлено %s тикеров", len(prices))
             return True
 
         except Exception as e:
-            logger.error("Ошибка сохранения цен: %s", e)
+            logger.error("Ошибка сохранения в Redis: %s", str(e))
             return False
 
     async def get_prices(self) -> Dict[str, float]:
-        """
-        Получает текущие цены из кеша.
+        """Получает все текущие цены из кеша.
 
         Returns:
-            Словарь {тикер: цена}.
+            Dict[str, float]: Словарь всех доступных цен {тикер: цена}
 
         Raises:
-            HTTPException: Если данные недоступны.
+            HTTPException: Если в кеше нет данных (код 503)
         """
         try:
             prices = await self.redis.hgetall(self.cache_key)
@@ -87,8 +96,19 @@ class PriceCache:
                   detail="Ошибка доступа к данным.") from e
 
     async def get_last_update_time(self) -> Optional[datetime]:
-        """Возвращает время последнего обновления цен."""
-        ttl = await self.redis.ttl(self.cache_key)
-        if ttl > 0:
-            return datetime.now() - timedelta(seconds=self.cache_ttl - ttl)
-        return None
+        """Возвращает время последнего обновления любого тикера.
+
+        Note:
+            Возвращает текущее время, так как данные
+            всегда считаются актуальными.
+
+        Returns:
+            Optional[datetime]: Всегда возвращает текущее время
+        """
+        exists = await self.redis.exists(self.cache_key)
+        return datetime.now() if exists else None
+
+    async def clear_cache(self) -> None:
+        """Полностью очищает кеш цен."""
+        await self.redis.delete(self.cache_key)
+        logger.info("Кеш цен полностью очищен")
