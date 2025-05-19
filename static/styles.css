@@ -262,6 +262,25 @@ button[type="submit"]:hover {
 .mt-1 { margin-top: 0.5rem; }    /* Маленький отступ сверху */
 .mt-2 { margin-top: 1rem; }      /* Средний отступ сверху */
 
+
+/* Стили для ячейки расхождения */
+.difference-cell {
+    text-align: right;
+    padding-right: 1rem;
+    font-family: monospace;
+    font-weight: 600;
+}
+
+/* Стиль когда цена выше верхней границы (зеленый) */
+.high-difference {
+    color: #2ecc71;
+}
+
+/* Стиль когда цена ниже нижней границы (красный) */
+.low-difference {
+    color: #e74c3c;
+}
+
 /* Адаптивные стили для экранов до 768px */
 @media (max-width: 768px) {
     #wrapper {
